@@ -84,24 +84,25 @@ export class LTAService {
 
   /**
    * Fetch arrival timings for a given 5-digit bus stop code.
-   * If custom backend URL is configured, will query that endpoint;
-   * otherwise uses the accurate high-fidelity LTA DataMall v2/v3 mock provider.
+   * Tries the /api/busarrival serverless endpoint first (or user custom URL).
+   * If LTA AccountKey is not yet set or endpoint errors, gracefully falls back
+   * to the high-fidelity LTA simulation engine.
    */
   public static async fetchBusArrivals(busStopCode: string): Promise<BusArrivalResponse> {
-    const customUrl = this.getCustomBackendUrl();
-    if (customUrl) {
-      try {
-        const fullUrl = customUrl.includes('?') 
-          ? `${customUrl}&BusStopCode=${busStopCode}` 
-          : `${customUrl}?BusStopCode=${busStopCode}`;
-        const res = await fetch(fullUrl);
-        if (res.ok) {
-          const data = await res.json();
+    const customUrl = this.getCustomBackendUrl() || '/api/busarrival';
+    try {
+      const fullUrl = customUrl.includes('?') 
+        ? `${customUrl}&BusStopCode=${encodeURIComponent(busStopCode)}` 
+        : `${customUrl}?BusStopCode=${encodeURIComponent(busStopCode)}`;
+      const res = await fetch(fullUrl);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && Array.isArray(data.Services)) {
           return this.processArrivalPayload(data, busStopCode);
         }
-      } catch (err) {
-        console.warn('Custom backend failed, falling back to LTA simulation engine:', err);
       }
+    } catch (err) {
+      // Graceful fallback to simulation engine when offline or serverless cold
     }
 
     // Default simulation engine conforming to LTA DataMall v2/v3

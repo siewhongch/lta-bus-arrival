@@ -23,32 +23,26 @@ export const BackendIntegrationModal: React.FC<BackendIntegrationModalProps> = (
     setTimeout(() => setSaveStatus(null), 3000);
   };
 
-  const sampleExpressSnippet = `// server.ts (Express proxy for LTA DataMall)
-import express from 'express';
-import dotenv from 'dotenv';
-dotenv.config();
+  const sampleExpressSnippet = `// /api/busarrival.ts (Serverless handler pulling from LTA DataMall v3)
+// Endpoint: GET /api/busarrival?BusStopCode=83139
+import type { Request, Response } from 'express';
 
-const app = express();
-const LTA_API_KEY = process.env.LTA_DATAMALL_KEY; // your LTA DataMall key
+export default async function handler(req: Request, res: Response) {
+  const busStopCode = req.query.BusStopCode as string;
+  const accountKey = process.env.LTA_ACCOUNT_KEY;
 
-app.get('/api/bus-arrival', async (req, res) => {
-  const busStopCode = req.query.BusStopCode;
-  try {
-    const response = await fetch(
-      \`http://datamall2.mytransport.sg/ltaodataservice/v3/BusArrival?BusStopCode=\${busStopCode}\`,
-      {
-        headers: {
-          AccountKey: LTA_API_KEY || '',
-          accept: 'application/json',
-        },
-      }
-    );
-    const data = await response.json();
-    res.json(data);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch from LTA DataMall' });
-  }
-});`;
+  const response = await fetch(
+    \`https://datamall2.mytransport.sg/ltaodataservice/v3/BusArrival?BusStopCode=\${busStopCode}\`,
+    {
+      headers: {
+        AccountKey: accountKey || '',
+        accept: 'application/json',
+      },
+    }
+  );
+  const data = await response.json();
+  res.json(data);
+};`;
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(sampleExpressSnippet);
